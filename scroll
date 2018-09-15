@@ -1,0 +1,89 @@
+#!/bin/bash
+
+usage() {
+    cat <<EOM
+SYNOPSIS
+  $0 [-loop <n>] -u <twitter-username> -o <out-dir>
+
+OPTIONS
+  -loop <n>
+    This will scroll n-times your favorites list.
+    If n=0, it never stops (until <Ctrl-c>).
+
+  -u <twitter-username>
+    Twitter @username (authorized with twurl)
+
+  -o <out-dir>
+    directory path to save json files
+EOM
+}
+
+LOOP=1
+USERNAME=
+OUT=
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -loop | --loop | -l | -L )
+            LOOP=$2
+            shift 2
+            ;;
+        -u | -U )
+            USERNAME=$2
+            shift 2
+            ;;
+        -o | -O )
+            OUT=$2
+            shift 2
+            ;;
+        -h | --help | -help )
+            usage
+            exit
+            ;;
+    esac
+done
+if [ -z "$OUT" -o -z "$USERNAME" ]; then
+    usage
+    exit 1
+fi
+if [ ! -d "$OUT" ]; then
+    mkdir -p "$OUT"
+fi
+
+loop() {
+    if (( $1 < 1 )); then
+        yes
+    else
+        seq "$1"
+    fi
+}
+
+scroll() {
+    OPTS=
+    FILE=$(mktemp)
+    while :; do
+        twurl set default "$USERNAME"
+        twurl "/1.1/favorites/list.json?count=200$OPTS" >"$FILE"
+        LEN=$(jq '. | length' "$FILE")
+        for i in $(seq 0 $((LEN - 1))); do
+            ID=$(jq -r ".[$i].id_str" "$FILE")
+            OUTJSON="$OUT/$ID.json"
+            if [ ! -f "$OUTJSON" ]; then
+                DATUM=$(jq -cM ".[$i]" "$FILE")
+                echo "$OUT/$ID.json"
+                echo "$DATUM" > "$OUT/$ID.json"
+            fi
+            OPTS="&max_id=${ID}"
+        done
+        if (( LEN < 200 )); then
+            break
+        fi
+        sleep 13
+    done
+    rm "$FILE"
+}
+
+loop "$LOOP" |
+while read _; do
+    echo "--- Start Scroll"
+    scroll
+done
