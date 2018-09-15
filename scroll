@@ -64,6 +64,7 @@ scroll() {
         twurl set default "$USERNAME"
         twurl "/1.1/favorites/list.json?count=200$OPTS" >"$FILE"
         LEN=$(jq '. | length' "$FILE")
+        echo "Response: ${LEN} favorites"
         for i in $(seq 0 $((LEN - 1))); do
             ID=$(jq -r ".[$i].id_str" "$FILE")
             OUTJSON="$OUT/$ID.json"
@@ -74,7 +75,7 @@ scroll() {
             fi
             OPTS="&max_id=${ID}"
         done
-        if (( LEN < 200 )); then
+        if (( LEN < 4 )); then
             break
         fi
         sleep 13
