@@ -1,4 +1,5 @@
 # tw-fav-scroll
+
 Save your likes
 
 ```bash
@@ -10,5 +11,4 @@ Save your likes
 # to see more
 ./scrool --help
 ```
-
 
