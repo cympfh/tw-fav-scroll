@@ -60,15 +60,17 @@ loop() {
 scroll() {
     OPTS=
     FILE=$(mktemp)
+    CHANGED=0
     while :; do
         twurl set default "$USERNAME"
         twurl "/1.1/favorites/list.json?count=200$OPTS" >"$FILE"
         LEN=$(jq '. | length' "$FILE")
-        echo "Response: ${LEN} favorites"
+        echo "[$(date)] Response: ${LEN} favs"
         for i in $(seq 0 $((LEN - 1))); do
             ID=$(jq -r ".[$i].id_str" "$FILE")
             OUTJSON="$OUT/$ID.json"
             if [ ! -f "$OUTJSON" ]; then
+                CHANGED=1
                 DATUM=$(jq -cM ".[$i]" "$FILE")
                 echo "$OUT/$ID.json"
                 echo "$DATUM" > "$OUT/$ID.json"
@@ -78,13 +80,18 @@ scroll() {
         if (( LEN < 4 )); then
             break
         fi
-        sleep 13
+        echo "[$(date)] Found new $CHANGED favs"
+        if [ $CHANGED -eq 0 ]; then
+          break
+        fi
+        sleep 30
     done
     rm "$FILE"
 }
 
 loop "$LOOP" |
 while read _; do
-    echo "--- Start Scroll"
+    echo "[$(date)] Start Scroll"
     scroll
+    sleep 60
 done
